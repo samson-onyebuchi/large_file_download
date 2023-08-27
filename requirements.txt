@@ -35,4 +35,5 @@ openpyxl
 xlsxwriter==1.4.5
 boto3==1.17.100
 faker>=8.0.0,<9.0.0
-
+google-auth==2.3.3
+google-auth-oauthlib==0.4.6

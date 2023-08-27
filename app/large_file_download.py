@@ -2,7 +2,12 @@ from flask import Flask, request, Response
 import pymongo
 import pandas as pd
 from openpyxl import Workbook
-import os 
+import os
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.base import MIMEBase
+from email.mime.text import MIMEText  # Add this import
+from email import encoders
 
 app = Flask(__name__)
 
@@ -18,18 +23,17 @@ except Exception as e:
 @app.route('/export-excel', methods=['GET'])
 def export_excel():
     try:
-        # Fetch data from MongoDB collection
+       
         cursor = collection.find({})
         data = list(cursor)
 
-        # Convert data to a DataFrame
         df = pd.DataFrame(data)
 
         # Create a new Excel workbook
         excel_writer = pd.ExcelWriter('Plaschema data.xlsx', engine='openpyxl')
         wb = excel_writer.book
 
-        # Convert the DataFrame to an Excel sheet
+       
         df.to_excel(excel_writer, sheet_name='Sheet1', index=False)
 
         # Save the Excel workbook
@@ -37,6 +41,37 @@ def export_excel():
 
         # Craft a congratulatory message
         congratulatory_message = "Congratulations! Excel file has been generated."
+
+        # Email configuration
+        from_email = 'nnadisamson63@gmail.com'
+        to_email = 'nnadionyebuchi33@gmail.com'
+        subject = 'Plaschema Data Excel File'
+        body = congratulatory_message
+
+
+        # Create the MIME object
+        msg = MIMEMultipart()
+        msg['From'] = from_email
+        msg['To'] = to_email
+        msg['Subject'] = subject
+        msg.attach(MIMEText(body, 'plain'))
+
+        # Attach the Excel file
+        filename = 'Plaschema data.xlsx'
+        attachment = open(filename, 'rb')
+        part = MIMEBase('application', 'octet-stream')
+        part.set_payload((attachment).read())
+        encoders.encode_base64(part)
+        part.add_header('Content-Disposition', "attachment; filename= %s" % filename)
+        msg.attach(part)
+
+        # Connect to the SMTP server and send the email
+        server = smtplib.SMTP('smtp.gmail.com: 587')
+        server.starttls()
+        server.login(from_email, (os.getenv("EMAIL_PASSWORD")))
+        text = msg.as_string()
+        server.sendmail(from_email, to_email, text)
+        server.quit()
 
         return congratulatory_message
 
@@ -46,3 +81,10 @@ def export_excel():
         return error_message, 500
 
 
+
+
+
+
+
+
+        
