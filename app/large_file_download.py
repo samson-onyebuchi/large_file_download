@@ -40,7 +40,7 @@ def export_excel():
         wb.save('Plaschema data.xlsx')
 
         # Craft a congratulatory message
-        congratulatory_message = "Congratulations! Excel file has been generated."
+        congratulatory_message = f"This is an excel file from  {db},{collection}."
 
         # Email configuration
         from_email = 'nnadisamson63@gmail.com'
@@ -66,7 +66,7 @@ def export_excel():
         msg.attach(part)
 
         # Connect to the SMTP server and send the email
-        server = smtplib.SMTP('smtp.gmail.com: 587')
+        server = smtplib.SMTP('smtp.gmail.com', 587)
         server.starttls()
         server.login(from_email, (os.getenv("EMAIL_PASSWORD")))
         text = msg.as_string()
@@ -79,12 +79,5 @@ def export_excel():
         error_message = f"An error occurred while processing the request: {str(e)}"
         print(error_message)
         return error_message, 500
-
-
-
-
-
-
-
 
         
