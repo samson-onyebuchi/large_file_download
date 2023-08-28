@@ -1,12 +1,12 @@
-from flask import Flask, request, Response
+from flask import Flask, request
 import pymongo
 import pandas as pd
-from openpyxl import Workbook
 import os
 import smtplib
+import zipfile
 from email.mime.multipart import MIMEMultipart
-from email.mime.base import MIMEBase
 from email.mime.text import MIMEText
+from email.mime.base import MIMEBase
 from email import encoders
 
 app = Flask(__name__)
@@ -20,68 +20,54 @@ except Exception as e:
     error_message = f"Error connecting to the database: {str(e)}"
     print(error_message)
 
-#@app.route('/export-excel', methods=['GET'])
-@app.route('/export-excel', methods=['POST'])
-def export_excel():
+def send_zip_email(data, from_email, to_email):
+    df = pd.DataFrame(data)
+    zip_filename = 'plaschema_data.zip'
+    
+    with zipfile.ZipFile(zip_filename, 'w', zipfile.ZIP_DEFLATED) as zipf:
+        csv_data = df.to_csv(index=False)
+        zipf.writestr('plaschema_data.csv', csv_data)
+    
+    congratulatory_message = f"This is data from {db.name}, {collection.name}."
+    subject = 'Plaschema Data ZIP File'
+    body = congratulatory_message
+
+    msg = MIMEMultipart()
+    msg['From'] = from_email
+    msg['To'] = to_email
+    msg['Subject'] = subject
+    msg.attach(MIMEText(body, 'plain'))
+
+    part = MIMEBase('application', 'zip')
+    with open(zip_filename, 'rb') as zip_file:
+        part.set_payload(zip_file.read())
+    encoders.encode_base64(part)
+    part.add_header('Content-Disposition', f'attachment; filename="{zip_filename}"')
+    msg.attach(part)
+
+    server = smtplib.SMTP('smtp.gmail.com', 587)
+    server.starttls()
+    server.login(from_email, os.getenv("EMAIL_PASSWORD"))
+    text = msg.as_string()
+    server.sendmail(from_email, to_email, text)
+    server.quit()
+
+    os.remove(zip_filename)
+
+@app.route('/export-email', methods=['POST'])
+def export_email():
     try:
-        # # Email configuration
-        # from_email = 'nnadisamson63@gmail.com'
-        # to_email = 'nnadionyebuchi33@gmail.com'
-        # subject = 'Plaschema Data Excel File'
-        # body = congratulatory_message
-        data = request.get_json()  
-        from_email = data.get('from_email')  
-        to_email = data.get('to_email')  
+        data = request.get_json()
+        from_email = data.get('from_email')
+        to_email = data.get('to_email')
 
         cursor = collection.find({})
         data = list(cursor)
 
-        df = pd.DataFrame(data)
+        send_zip_email(data, from_email, to_email)
 
-        # Create a new Excel workbook
-        excel_writer = pd.ExcelWriter('Plaschema data.xlsx', engine='openpyxl')
-        wb = excel_writer.book
-
-        df.to_excel(excel_writer, sheet_name='Sheet1', index=False)
-
-        # Save the Excel workbook
-        wb.save('Plaschema data.xlsx')
-
-        # Craft a congratulatory message
-        congratulatory_message = f"This is an excel file from {db}, {collection}."
-
-        # Email configuration
-        subject = 'Plaschema Data Excel File'
-        body = congratulatory_message
-
-        # Create the MIME object
-        msg = MIMEMultipart()
-        msg['From'] = from_email
-        msg['To'] = to_email
-        msg['Subject'] = subject
-        msg.attach(MIMEText(body, 'plain'))
-
-        # Attach the Excel file
-        filename = 'Plaschema data.xlsx'
-        attachment = open(filename, 'rb')
-        part = MIMEBase('application', 'octet-stream')
-        part.set_payload((attachment).read())
-        encoders.encode_base64(part)
-        part.add_header('Content-Disposition', "attachment; filename= %s" % filename)
-        msg.attach(part)
-
-        # Connect to the SMTP server and send the email
-        server = smtplib.SMTP('smtp.gmail.com', 587)
-        server.starttls()
-        server.login(from_email, (os.getenv("EMAIL_PASSWORD")))
-        text = msg.as_string()
-        server.sendmail(from_email, to_email, text)
-        server.quit()
-
-        return congratulatory_message
+        return "ZIP file with data sent successfully."
 
     except Exception as e:
         error_message = f"An error occurred while processing the request: {str(e)}"
-        print(error_message)
         return error_message, 500
-    
