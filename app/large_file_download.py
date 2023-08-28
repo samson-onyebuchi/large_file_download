@@ -6,7 +6,7 @@ import os
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.base import MIMEBase
-from email.mime.text import MIMEText  # Add this import
+from email.mime.text import MIMEText
 from email import encoders
 
 app = Flask(__name__)
@@ -20,10 +20,19 @@ except Exception as e:
     error_message = f"Error connecting to the database: {str(e)}"
     print(error_message)
 
-@app.route('/export-excel', methods=['GET'])
+#@app.route('/export-excel', methods=['GET'])
+@app.route('/export-excel', methods=['POST'])
 def export_excel():
     try:
-       
+        # # Email configuration
+        # from_email = 'nnadisamson63@gmail.com'
+        # to_email = 'nnadionyebuchi33@gmail.com'
+        # subject = 'Plaschema Data Excel File'
+        # body = congratulatory_message
+        data = request.get_json()  
+        from_email = data.get('from_email')  
+        to_email = data.get('to_email')  
+
         cursor = collection.find({})
         data = list(cursor)
 
@@ -33,21 +42,17 @@ def export_excel():
         excel_writer = pd.ExcelWriter('Plaschema data.xlsx', engine='openpyxl')
         wb = excel_writer.book
 
-       
         df.to_excel(excel_writer, sheet_name='Sheet1', index=False)
 
         # Save the Excel workbook
         wb.save('Plaschema data.xlsx')
 
         # Craft a congratulatory message
-        congratulatory_message = f"This is an excel file from  {db},{collection}."
+        congratulatory_message = f"This is an excel file from {db}, {collection}."
 
         # Email configuration
-        from_email = 'nnadisamson63@gmail.com'
-        to_email = 'nnadionyebuchi33@gmail.com'
         subject = 'Plaschema Data Excel File'
         body = congratulatory_message
-
 
         # Create the MIME object
         msg = MIMEMultipart()
@@ -79,5 +84,4 @@ def export_excel():
         error_message = f"An error occurred while processing the request: {str(e)}"
         print(error_message)
         return error_message, 500
-
-        
+    
